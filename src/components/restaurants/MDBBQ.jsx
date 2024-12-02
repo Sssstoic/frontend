@@ -1,50 +1,47 @@
 import React, { useState, useCallback, useMemo, useReducer, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import bulgogi from '../../assets/bulgogi.jpg';
+import classicbbq from '../../assets/classicbbq.jpeg';
+import porkBelly from '../../assets/porkBelly.webp';
+import promo from '../../assets/promo.jpg';
 import { 
   FaUtensils, FaClipboardList, FaCalendarAlt, 
   FaMapMarkerAlt, FaShoppingCart, FaStar 
 } from 'react-icons/fa';
+import { b } from 'framer-motion/client';
 
 // Sample data (you might want to move this to a separate file)
 const menuItems = [
     {
         id: 1,
-        name: 'Classic BBQ Combo',
-        description: 'Signature BBQ platter with mixed meats',
+        name: 'Korean Beef Bulgogi',
+        description: 'Signature Korean Beef Dish',
         price: 24.99,
-        image: '/api/placeholder/300/200',
+        image: bulgogi,
     },
     {
         id: 2,
         name: 'Korean Beef Ribs',
         description: 'Tender beef ribs with special marinade',
         price: 29.99,
-        image: '/api/placeholder/300/200',
+        image: classicbbq,
     },
     {
         id: 3,
         name: 'Spicy Pork Belly',
         description: 'Grilled spicy pork belly with side dishes',
         price: 22.99,
-        image: '/api/placeholder/300/200',
+        image: porkBelly,
     }
 ];
 
 const promotions = [
     {
         id: 1,
-        title: '50% Off Your First Order',
-        description: 'Get 50% off your first online order when you use the code FIRST50.',
-        image: '/api/placeholder/300/200',
-        validUntil: '2024-12-31',
+        title: 'Weekdays Special Offer',
+        description: 'Get 10% off on all combo. Valid on weekdays only!',
+        image: promo,
     },
-    {
-        id: 2,
-        title: 'Weekend BBQ Feast',
-        description: 'Order the BBQ Combo for 4 and get free appetizers this weekend!',
-        image: '/api/placeholder/300/200',
-        validUntil: '2024-12-05',
-    }
 ];
 
 // Cart Reducer
