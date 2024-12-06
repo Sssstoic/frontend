@@ -1,341 +1,379 @@
 import React, { useState, useCallback, useMemo, useReducer, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FaUtensils, FaClipboardList, FaCalendarAlt, FaMapMarkerAlt, FaShoppingCart, FaStar, FaMinus, FaPlus, FaTrash } from 'react-icons/fa';
 import bulgogi from '../../assets/bulgogi.jpg';
 import classicbbq from '../../assets/classicbbq.jpeg';
 import porkBelly from '../../assets/porkBelly.webp';
 import promo from '../../assets/promo.jpg';
-import { 
-  FaUtensils, FaClipboardList, FaCalendarAlt, 
-  FaMapMarkerAlt, FaShoppingCart, FaStar 
-} from 'react-icons/fa';
-import { b } from 'framer-motion/client';
 
-// Sample data (you might want to move this to a separate file)
-const menuItems = [
-    {
-        id: 1,
-        name: 'Korean Beef Bulgogi',
-        description: 'Signature Korean Beef Dish',
-        price: 24.99,
-        image: bulgogi,
-    },
-    {
-        id: 2,
-        name: 'Korean Beef Ribs',
-        description: 'Tender beef ribs with special marinade',
-        price: 29.99,
-        image: classicbbq,
-    },
-    {
-        id: 3,
-        name: 'Spicy Pork Belly',
-        description: 'Grilled spicy pork belly with side dishes',
-        price: 22.99,
-        image: porkBelly,
-    }
+const MENU_ITEMS = [
+  { 
+    id: 1, 
+    name: 'Korean Beef Bulgogi', 
+    price: 24.99, 
+    image: bulgogi,
+    description: 'Tender marinated beef grilled to perfection'
+  },
+  { 
+    id: 2, 
+    name: 'Korean Beef Ribs', 
+    price: 29.99, 
+    image: classicbbq,
+    description: 'Classic Korean-style BBQ beef ribs'
+  },
+  { 
+    id: 3, 
+    name: 'Spicy Pork Belly', 
+    price: 22.99, 
+    image: porkBelly,
+    description: 'Spicy and crispy pork belly slices'
+  },
 ];
 
-const promotions = [
-    {
-        id: 1,
-        title: 'Weekdays Special Offer',
-        description: 'Get 10% off on all combo. Valid on weekdays only!',
-        image: promo,
-    },
+const PROMOTIONS = [
+  { 
+    id: 1, 
+    title: 'Weekdays Special Offer', 
+    image: promo,
+    description: 'Get 10% off on selected menu items during weekdays'
+  },
 ];
 
-// Cart Reducer
 const cartReducer = (state, action) => {
-    switch (action.type) {
-        case 'ADD_ITEM':
-            const existingItem = state.find(item => item.id === action.payload.id);
-            if (existingItem) return state;
-            return [...state, { ...action.payload, quantity: 1 }];
-        case 'REMOVE_ITEM':
-            return state.filter(item => item.id !== action.payload);
-        case 'INCREASE_QUANTITY':
-            return state.map(item => 
-                item.id === action.payload 
-                    ? { ...item, quantity: item.quantity + 1 } 
-                    : item
-            );
-        case 'DECREASE_QUANTITY':
-            return state.map(item => 
-                item.id === action.payload && item.quantity > 1
-                    ? { ...item, quantity: item.quantity - 1 }
-                    : item
-            );
-        case 'CLEAR_CART':
-            return [];
-        default:
-            return state;
-    }
+  switch (action.type) {
+    case 'ADD_ITEM': 
+      const existingItemIndex = state.findIndex(item => item.id === action.payload.id);
+      if (existingItemIndex > -1) {
+        const updatedCart = [...state];
+        updatedCart[existingItemIndex].quantity += 1;
+        return updatedCart;
+      }
+      return [...state, { ...action.payload, quantity: 1 }];
+    
+    case 'REMOVE_ITEM': 
+      return state.filter(item => item.id !== action.payload);
+    
+    case 'INCREASE_QUANTITY': 
+      return state.map(item => 
+        item.id === action.payload 
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      );
+    
+    case 'DECREASE_QUANTITY': 
+      return state.map(item => 
+        item.id === action.payload && item.quantity > 1
+          ? { ...item, quantity: item.quantity - 1 }
+          : item
+      );
+    
+    case 'CLEAR_CART': 
+      return [];
+    
+    default: 
+      return state;
+  }
 };
 
 const MDBBQ = () => {
-    const [activeTab, setActiveTab] = useState('overview');
-    const [cartItems, dispatchCart] = useReducer(cartReducer, [], () => {
-        const savedCart = localStorage.getItem('mdbbq-cart');
-        return savedCart ? JSON.parse(savedCart) : [];
-    });
-    const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('menu');
+  const [cartItems, dispatchCart] = useReducer(cartReducer, JSON.parse(localStorage.getItem('mdbbq-cart')) || []);
+  const [temporarilyAddedItems, setTemporarilyAddedItems] = useState({});
+  const [reservationData, setReservationData] = useState({
+    name: '',
+    date: '',
+    time: '',
+    people: '',
+  });
 
-    // Persist cart to localStorage
-    useEffect(() => {
-        localStorage.setItem('mdbbq-cart', JSON.stringify(cartItems));
-    }, [cartItems]);
+  const navigate = useNavigate();
 
-    // Memoized cart total
-    const cartTotal = useMemo(() => 
-        cartItems.reduce((total, item) => total + item.price * item.quantity, 0), 
-        [cartItems]
-    );
+  useEffect(() => {
+    localStorage.setItem('mdbbq-cart', JSON.stringify(cartItems));
+  }, [cartItems]);
 
-    // Cart actions
-    const addToCart = useCallback((item) => {
-        dispatchCart({ type: 'ADD_ITEM', payload: item });
-    }, []);
+  const cartTotal = useMemo(() => 
+    cartItems.reduce((total, item) => total + item.price * item.quantity, 0), 
+    [cartItems]
+  );
 
-    const removeFromCart = useCallback((itemId) => {
-        dispatchCart({ type: 'REMOVE_ITEM', payload: itemId });
-    }, []);
+  const addToCart = useCallback((item) => {
+    dispatchCart({ type: 'ADD_ITEM', payload: item });
 
-    const increaseQuantity = useCallback((itemId) => {
-        dispatchCart({ type: 'INCREASE_QUANTITY', payload: itemId });
-    }, []);
+    setTemporarilyAddedItems(prev => ({
+      ...prev,
+      [item.id]: true
+    }));
 
-    const decreaseQuantity = useCallback((itemId) => {
-        dispatchCart({ type: 'DECREASE_QUANTITY', payload: itemId });
-    }, []);
+    const timer = setTimeout(() => {
+      setTemporarilyAddedItems(prev => {
+        const updated = {...prev};
+        delete updated[item.id];
+        return updated;
+      });
+    }, 2000);
 
-    // Checkout handler
-    const handleCheckout = useCallback(() => {
-        if (cartItems.length === 0) {
-            alert('Your cart is empty. Please add items before proceeding.');
-        } else {
-            navigate('/checkout');
-        }
-    }, [cartItems, navigate]);
+    return () => clearTimeout(timer);
+  }, []);
 
-    // Render content based on active tab
-    const renderContent = () => {
-        switch(activeTab) {
-            case 'overview':
-                return (
-                    <div className="p-6">
-                        <h2 className="text-3xl font-bold mb-4 text-gray-800">About MDBBQ</h2>
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <p className="text-lg text-gray-700 mb-4 leading-relaxed">
-                                    MDBBQ brings the authentic taste of Korean BBQ to your table. 
-                                    Our restaurant combines traditional cooking methods with modern culinary techniques, 
-                                    creating an unforgettable dining experience.
-                                </p>
-                                <div className="flex items-center mb-4">
-                                    <FaStar className="text-yellow-500 mr-2" />
-                                    <span className="text-gray-600">4.5/5 (342 Reviews)</span>
-                                </div>
-                            </div>
-                            <div className="bg-gray-100 p-6 rounded-lg shadow-md">
-                                <h3 className="text-xl font-semibold mb-3 text-gray-800">Restaurant Highlights</h3>
-                                <ul className="space-y-2 text-gray-700">
-                                    <li className="flex items-center">
-                                        <FaUtensils className="mr-2 text-primary" />
-                                        Authentic Korean BBQ
-                                    </li>
-                                    <li className="flex items-center">
-                                        <FaClipboardList className="mr-2 text-primary" />
-                                        Fresh, High-Quality Meats
-                                    </li>
-                                    <li className="flex items-center">
-                                        <FaCalendarAlt className="mr-2 text-primary" />
-                                        Traditional Cooking Methods
-                                    </li>
-                                    <li className="flex items-center">
-                                        <FaMapMarkerAlt className="mr-2 text-primary" />
-                                        Vegetarian Options Available
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                );
-            case 'menu':
-                return (
-                    <div className="p-6">
-                        <h2 className="text-3xl font-bold mb-6 text-gray-800">Our Menu</h2>
-                        <div className="grid md:grid-cols-3 gap-6">
-                            {menuItems.map(item => (
-                                <div key={item.id} className="bg-white rounded-lg shadow-md overflow-hidden transform transition-all hover:scale-105">
-                                    <img 
-                                        src={item.image} 
-                                        alt={item.name} 
-                                        className="w-full h-48 object-cover"
-                                    />
-                                    <div className="p-4">
-                                        <h3 className="text-xl font-bold mb-2 text-gray-800">{item.name}</h3>
-                                        <p className="text-gray-600 mb-3">{item.description}</p>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-lg font-semibold text-primary">${item.price.toFixed(2)}</span>
-                                            <button 
-                                                onClick={() => addToCart(item)}
-                                                className="bg-primary text-white px-4 py-2 rounded-full hover:bg-primaryDark transition-colors"
-                                            >
-                                                {cartItems.some(cartItem => cartItem.id === item.id) 
-                                                    ? "Added" 
-                                                    : "Add to Cart"}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-            case 'ordering':
-                return (
-                    <div className="p-6">
-                        <h2 className="text-3xl font-bold mb-6 text-gray-800">Your Cart</h2>
-                        <div className="bg-gray-100 p-6 rounded-lg">
-                            {cartItems.length === 0 ? (
-                                <div className="text-center text-gray-600">
-                                    <FaShoppingCart className="mx-auto text-4xl mb-4 text-gray-400" />
-                                    <p>Your cart is empty. Start adding some delicious items!</p>
-                                </div>
-                            ) : (
-                                <>
-                                    {cartItems.map(item => (
-                                        <div 
-                                            key={item.id} 
-                                            className="flex justify-between items-center border-b py-4 last:border-b-0"
-                                        >
-                                            <div>
-                                                <h4 className="font-semibold text-gray-800">{item.name}</h4>
-                                                <p className="text-gray-600">
-                                                    ${item.price.toFixed(2)} × {item.quantity} = 
-                                                    ${(item.price * item.quantity).toFixed(2)}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center space-x-3">
-                                                <button 
-                                                    onClick={() => decreaseQuantity(item.id)}
-                                                    className="bg-gray-200 text-gray-700 w-8 h-8 rounded-full hover:bg-gray-300"
-                                                >
-                                                    -
-                                                </button>
-                                                <span>{item.quantity}</span>
-                                                <button 
-                                                    onClick={() => increaseQuantity(item.id)}
-                                                    className="bg-gray-200 text-gray-700 w-8 h-8 rounded-full hover:bg-gray-300"
-                                                >
-                                                    +
-                                                </button>
-                                                <button 
-                                                    onClick={() => removeFromCart(item.id)}
-                                                    className="text-red-500 hover:text-red-700"
-                                                >
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <div className="mt-6 flex justify-between items-center">
-                                        <span className="text-xl font-bold text-gray-800">Total:</span>
-                                        <span className="text-xl font-bold text-primary">${cartTotal.toFixed(2)}</span>
-                                    </div>
-                                    <button 
-                                        onClick={handleCheckout}
-                                        className="w-full mt-4 bg-primary text-white py-3 rounded-lg hover:bg-primaryDark transition-colors"
-                                    >
-                                        Proceed to Checkout
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                );
-            case 'promotions':
-                return (
-                    <div className="p-6">
-                        <h2 className="text-3xl font-bold mb-6 text-gray-800">Current Promotions</h2>
-                        <div className="grid md:grid-cols-2 gap-6">
-                            {promotions.map(promo => (
-                                <div 
-                                    key={promo.id} 
-                                    className="bg-white rounded-lg shadow-md overflow-hidden transform transition-all hover:scale-105"
-                                >
-                                    <img 
-                                        src={promo.image} 
-                                        alt={promo.title} 
-                                        className="w-full h-48 object-cover"
-                                    />
-                                    <div className="p-4">
-                                        <h3 className="text-xl font-semibold mb-2 text-gray-800">{promo.title}</h3>
-                                        <p className="text-gray-600 mb-3">{promo.description}</p>
-                                        <span className="text-sm text-gray-500">
-                                            Valid until: {promo.validUntil}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-            case 'reservations':
-                return (
-                    <div className="p-6">
-                        <h2 className="text-3xl font-bold mb-6 text-gray-800">Make a Reservation</h2>
-                        <div className="bg-gray-100 p-6 rounded-lg">
-                            <p className="text-gray-700 mb-4">
-                                Booking a table at MDBBQ is quick and easy. Reserve your spot today!
-                            </p>
-                            {/* Placeholder for reservation form */}
-                            <div className="text-center">
-                                <button 
-                                    className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primaryDark transition-colors"
-                                >
-                                    Book a Table
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                );
-            default:
-                return <div className="p-6 text-center text-gray-600">404 - Section Not Found</div>;
-        }
-    };
+  const removeFromCart = useCallback((itemId) => {
+    dispatchCart({ type: 'REMOVE_ITEM', payload: itemId });
+  }, []);
 
-    return (
-        <div className="container mx-auto px-4 py-8">
-            {/* Tab Navigation */}
-            <nav className="mb-6">
-                <ul className="flex justify-center space-x-6 border-b-2 border-gray-200 pb-2">
-                    {['overview', 'menu', 'ordering', 'promotions', 'reservations'].map(tab => (
-                        <li 
-                            key={tab}
-                            className={`
-                                cursor-pointer 
-                                uppercase 
-                                text-sm 
-                                font-semibold 
-                                pb-2 
-                                transition-colors 
-                                ${activeTab === tab 
-                                    ? 'text-primary border-b-2 border-primary' 
-                                    : 'text-gray-500 hover:text-gray-800'}
-                            `}
-                            onClick={() => setActiveTab(tab)}
-                        >
-                            {tab}
-                        </li>
-                    ))}
-                </ul>
-            </nav>
+  const increaseQuantity = useCallback((itemId) => {
+    dispatchCart({ type: 'INCREASE_QUANTITY', payload: itemId });
+  }, []);
 
-            {/* Render content based on active tab */}
-            {renderContent()}
+  const decreaseQuantity = useCallback((itemId) => {
+    dispatchCart({ type: 'DECREASE_QUANTITY', payload: itemId });
+  }, []);
+
+  const handleCheckout = useCallback(() => {
+    if (cartItems.length === 0) {
+      alert('Your cart is empty. Please add items before checking out.');
+      return;
+    }
+
+    sessionStorage.setItem('checkoutCart', JSON.stringify({
+      items: cartItems,
+      total: cartTotal
+    }));
+    
+    navigate('/checkout');
+  }, [cartItems, cartTotal, navigate]);
+
+  const handleReservationChange = (e) => {
+    const { name, value } = e.target;
+    setReservationData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  const handleReservationSubmit = () => {
+    // Here you would handle the form submission, e.g., store the reservation in a database
+    alert(`Reservation confirmed for ${reservationData.name} on ${reservationData.date} at ${reservationData.time} for ${reservationData.people} people.`);
+    setReservationData({ name: '', date: '', time: '', people: '' }); // Reset reservation form after submission
+  };
+
+  const renderMenuItems = () => (
+    <div className="grid md:grid-cols-3 gap-6">
+      {MENU_ITEMS.map(item => (
+        <div 
+          key={item.id} 
+          className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300"
+        >
+          <img 
+            src={item.image} 
+            alt={item.name} 
+            className="w-full h-48 object-cover hover:scale-105 transition-transform"
+          />
+          <div className="p-4">
+            <h3 className="font-bold text-lg">{item.name}</h3>
+            <p className="text-gray-600 text-sm mb-2">{item.description}</p>
+            <div className="flex justify-between items-center">
+              <span className="text-xl font-semibold text-green-600">${item.price.toFixed(2)}</span>
+              <button 
+                onClick={() => addToCart(item)}
+                className={`
+                  px-4 py-2 rounded 
+                  ${temporarilyAddedItems[item.id]
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-blue-500 text-white hover:bg-blue-600'}
+                  transition-colors duration-300
+                `}
+              >
+                {temporarilyAddedItems[item.id] ? 'Added!' : 'Add to Cart'}
+              </button>
+            </div>
+          </div>
         </div>
-    );
+      ))}
+    </div>
+  );
+
+  const renderCartItems = () => (
+    <div className="space-y-4">
+      {cartItems.length === 0 ? (
+        <div className="flex flex-col items-center justify-center text-gray-500">
+          <FaShoppingCart className="text-4xl mb-4" />
+          <p>Your cart is empty</p>
+        </div>
+      ) : (
+        <>
+          {cartItems.map(item => (
+            <div 
+              key={item.id} 
+              className="flex items-center justify-between bg-white p-4 rounded-lg shadow-md"
+            >
+              <div className="flex items-center space-x-4">
+                <img 
+                  src={item.image} 
+                  alt={item.name} 
+                  className="w-16 h-16 object-cover rounded"
+                />
+                <div>
+                  <h4 className="font-bold">{item.name}</h4>
+                  <p className="text-gray-600">${item.price.toFixed(2)} each</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center">
+                  <button 
+                    onClick={() => decreaseQuantity(item.id)}
+                    className="bg-gray-200 p-2 rounded-l"
+                  >
+                    <FaMinus />
+                  </button>
+                  <span className="px-4 py-2 bg-gray-100">{item.quantity}</span>
+                  <button 
+                    onClick={() => increaseQuantity(item.id)}
+                    className="bg-gray-200 p-2 rounded-r"
+                  >
+                    <FaPlus />
+                  </button>
+                </div>
+                <span className="font-semibold">
+                  ${(item.price * item.quantity).toFixed(2)}
+                </span>
+                <button 
+                  onClick={() => removeFromCart(item.id)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <FaTrash />
+                </button>
+              </div>
+            </div>
+          ))}
+          <div className="mt-6 bg-gray-100 p-4 rounded-lg">
+            <div className="flex justify-between items-center">
+              <span className="text-xl font-bold">Total:</span>
+              <span className="text-2xl font-bold text-green-600">
+                ${cartTotal.toFixed(2)}
+              </span>
+            </div>
+            <button 
+              onClick={handleCheckout}
+              className="w-full mt-4 bg-blue-500 text-white py-3 rounded hover:bg-blue-600 transition-colors"
+            >
+              Proceed to Checkout
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const renderReservationForm = () => (
+    <div className="space-y-4">
+      <h2 className="text-2xl font-bold">Make a Reservation</h2>
+      <form onSubmit={e => e.preventDefault()} className="space-y-4">
+        <div>
+          <label className="block text-sm font-semibold">Name</label>
+          <input 
+            type="text" 
+            name="name"
+            value={reservationData.name}
+            onChange={handleReservationChange}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold">Date</label>
+          <input 
+            type="date" 
+            name="date"
+            value={reservationData.date}
+            onChange={handleReservationChange}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold">Time</label>
+          <input 
+            type="time" 
+            name="time"
+            value={reservationData.time}
+            onChange={handleReservationChange}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold">Number of People</label>
+          <input 
+            type="number" 
+            name="people"
+            value={reservationData.people}
+            onChange={handleReservationChange}
+            className="w-full p-2 border rounded"
+            min="1"
+            required
+          />
+        </div>
+        <button 
+          type="button"
+          onClick={handleReservationSubmit}
+          className="w-full bg-green-500 text-white py-3 rounded hover:bg-green-600 transition-colors"
+        >
+          Confirm Reservation
+        </button>
+      </form>
+    </div>
+  );
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <nav className="mb-8">
+        <ul className="flex space-x-4 justify-center">
+          {[ 
+            { tab: 'menu', icon: <FaUtensils /> },
+            { tab: 'ordering', icon: <FaShoppingCart /> },
+            { tab: 'promotions', icon: <FaStar /> },
+            { tab: 'reservations', icon: <FaCalendarAlt /> }
+          ].map(({ tab, icon }) => (
+            <li 
+              key={tab} 
+              onClick={() => setActiveTab(tab)}
+              className={` 
+                flex items-center space-x-2 cursor-pointer px-4 py-2 rounded
+                ${activeTab === tab ? 'bg-blue-500 text-white' : 'bg-gray-200'}
+              `}
+            >
+              {icon}
+              <span className="capitalize">{tab}</span>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      {activeTab === 'menu' && renderMenuItems()}
+      {activeTab === 'ordering' && renderCartItems()}
+      {activeTab === 'promotions' && (
+        <div className="grid md:grid-cols-2 gap-6">
+          {PROMOTIONS.map(promo => (
+            <div 
+              key={promo.id} 
+              className="bg-white rounded-lg shadow-md overflow-hidden"
+            >
+              <img 
+                src={promo.image} 
+                alt={promo.title} 
+                className="w-full h-48 object-cover"
+              />
+              <div className="p-4">
+                <h3 className="font-bold text-lg">{promo.title}</h3>
+                <p className="text-gray-600">{promo.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {activeTab === 'reservations' && renderReservationForm()}
+    </div>
+  );
 };
 
 export default MDBBQ;
